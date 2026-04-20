@@ -440,7 +440,6 @@ export default function HomePage({ onNavigate }) {
               <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <button className="btn-ghost-lg">Schedule a demo</button>
         </div>
       </div>
 

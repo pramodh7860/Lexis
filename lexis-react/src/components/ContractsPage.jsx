@@ -16,7 +16,6 @@ export default function ContractsPage({ onNavigate }) {
               $2.4M total value</div>
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <button className="btn-ghost-lg">↑ Import</button>
             <button className="btn-primary-lg" onClick={() => onNavigate('new-contract')}><span>+ New contract</span></button>
           </div>
         </div>

@@ -126,7 +126,7 @@ export default function DashboardPage({ onNavigate }) {
               <div className="sb-avatar">AK</div>
               <div>
                 <div className="sb-user-name">Arjun Kumar</div>
-                <div className="sb-user-role">General Counsel</div>
+                <div className="sb-user-role">General Counsel <span style={{ opacity: 0.5 }}>· Admin</span></div>
               </div>
             </div>
           </div>
@@ -279,18 +279,6 @@ export default function DashboardPage({ onNavigate }) {
                 <div className="qa-row" onClick={() => onNavigate('new-contract')} style={{cursor: 'pointer'}}>
                   <div className="qa-row-left">+ New contract</div>
                   <div className="qa-row-right">From template →</div>
-                </div>
-                <div className="qa-row">
-                  <div className="qa-row-left">↑ Upload document</div>
-                  <div className="qa-row-right">PDF · DOCX</div>
-                </div>
-                <div className="qa-row">
-                  <div className="qa-row-left">✎ eSign pending</div>
-                  <div className="qa-row-right">3 awaiting →</div>
-                </div>
-                <div className="qa-row">
-                  <div className="qa-row-left">⎋ Export report</div>
-                  <div className="qa-row-right">CSV · PDF</div>
                 </div>
               </div>
             </div>

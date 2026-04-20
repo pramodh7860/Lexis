@@ -37,8 +37,6 @@ export default function Navbar({ activePage, onNavigate }) {
             Dashboard
           </a>
         </li>
-        <li><a href="#">Pricing</a></li>
-        <li><a href="#">Docs</a></li>
       </ul>
 
       <div className="nav-right">
@@ -46,7 +44,7 @@ export default function Navbar({ activePage, onNavigate }) {
           <div className="alert-blink"></div>
           3 critical
         </div>
-        <button className="btn-ink" onClick={() => onNavigate('dashboard')}>Open app</button>
+        <button className="btn-ink" onClick={() => onNavigate('login')}>Login</button>
       </div>
     </nav>
   );

@@ -1894,7 +1894,6 @@ body {
     animation: fadeIn .2s ease both;
 }
 
-/* Reveal on scroll */
 .reveal {
     opacity: 0;
     transform: translateY(16px);
@@ -1904,6 +1903,68 @@ body {
 .reveal.in {
     opacity: 1;
     transform: translateY(0);
+}
+
+/* ═══════════════════════════════════════
+   LOGIN PAGE
+═══════════════════════════════════════ */
+
+.login-wrap {
+    display: flex;
+    min-height: calc(100vh - 56px);
+    background: var(--cream);
+}
+
+.login-left {
+    flex: 1;
+    padding: 80px 64px;
+    border-right: 1px solid var(--line2);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.login-right {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--cream2);
+    padding: 40px;
+}
+
+.login-form-container {
+    width: 100%;
+    max-width: 380px;
+    background: var(--cream);
+    border: 1px solid var(--line2);
+    padding: 40px;
+    box-shadow: 8px 8px 0 var(--ghost);
+}
+
+.login-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 32px;
+    justify-content: center;
+}
+
+.login-brand .brand-mark {
+    width: 32px;
+    height: 32px;
+}
+
+.login-brand .brand-name {
+    font-size: 24px;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
 /* ═══════════════════════════════════════

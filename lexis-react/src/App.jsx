@@ -5,6 +5,7 @@ import DashboardPage from './components/DashboardPage';
 import ContractsPage from './components/ContractsPage';
 import ContractDetailPage from './components/ContractDetailPage';
 import NewContractPage from './components/NewContractPage';
+import LoginPage from './components/LoginPage';
 
 export default function App() {
   const [activePage, setActivePage] = useState('home');
@@ -16,6 +17,8 @@ export default function App() {
       setContractId(data || 'techcorp');
     } else if (page === 'new-contract') {
       setActivePage('new-contract');
+    } else if (page === 'login') {
+      setActivePage('login');
     } else {
       setActivePage(page);
       setContractId(null);
@@ -48,6 +51,10 @@ export default function App() {
 
       <div className={`page ${activePage === 'new-contract' ? 'active' : ''}`}>
         {activePage === 'new-contract' && <NewContractPage onNavigate={handleNavigate} />}
+      </div>
+
+      <div className={`page ${activePage === 'login' ? 'active' : ''}`}>
+        {activePage === 'login' && <LoginPage onNavigate={handleNavigate} />}
       </div>
     </>
   );

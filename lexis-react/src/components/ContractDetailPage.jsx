@@ -153,6 +153,7 @@ const CONTRACTS_DATA = {
 };
 
 export default function ContractDetailPage({ contractId, onNavigate }) {
+  const currentUserRole = 'Admin'; // User roles: 'Admin', 'Manager', 'User'
   const [commentText, setCommentText] = useState('');
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -203,12 +204,14 @@ export default function ContractDetailPage({ contractId, onNavigate }) {
             </div>
             <div className="dh-actions">
               <button className="btn-secondary" onClick={() => onNavigate('contracts')}>Edit</button>
-              <button className="btn-primary-lg" onClick={() => setShowApproveModal(true)} style={{padding: '10px 24px', fontSize: '12px'}}>
-                <span>Approve</span>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M3 7l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
+              {(currentUserRole === 'Admin' || currentUserRole === 'Manager') && (
+                <button className="btn-primary-lg" onClick={() => setShowApproveModal(true)} style={{padding: '10px 24px', fontSize: '12px'}}>
+                  <span>Approve</span>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M3 7l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -320,30 +323,50 @@ export default function ContractDetailPage({ contractId, onNavigate }) {
               </div>
             </div>
 
-            {/* DOCUMENTS */}
+            {/* DOCUMENTS & PREVIEW */}
             <div className="ds-section">
               <div className="ds-head">
-                <div className="ds-title">Documents — {contract.documents.length} files</div>
-                <button className="ph-action">+ Upload</button>
+                <div className="ds-title">Document viewer</div>
+                <button className="ph-action">+ Upload new version</button>
               </div>
-              <div className="ds-content">
-                {contract.documents.map((doc, i) => (
-                  <div key={i} className="doc-row">
-                    <div className="doc-left">
-                      <div className="doc-icon">
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <path d="M3 2h5l3 3v7a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" stroke="var(--muted)" strokeWidth="1.2"/>
-                          <path d="M8 2v4h4" stroke="var(--muted)" strokeWidth="1.2" strokeLinecap="round"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <div className="doc-name">{doc.name}</div>
-                        <div className="doc-meta">{doc.size} · {doc.date}</div>
-                      </div>
-                    </div>
-                    <button className="doc-action">Download</button>
+              <div className="ds-content" style={{ display: 'flex', gap: '20px' }}>
+                <div style={{ flex: 2 }}>
+                  <div style={{ 
+                    border: '1px solid var(--line2)', background: 'white', 
+                    borderRadius: '4px', height: '400px', display: 'flex', 
+                    flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    color: 'var(--faint)'
+                  }}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style={{ marginBottom: '16px' }}>
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                      <path d="M14 2v6h6" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                    </svg>
+                    <div style={{ fontSize: '14px', color: 'var(--ink)' }}>{contract.documents[0]?.name || 'Document Prefix'}</div>
+                    <div style={{ marginTop: '8px', fontSize: '12px' }}>Pages 1-28 • PDF Preview</div>
                   </div>
-                ))}
+                </div>
+
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)' }}>
+                    Version History
+                  </div>
+                  {contract.documents.map((doc, i) => (
+                    <div key={i} className="doc-row" style={{ padding: '12px', background: i === 0 ? 'var(--cream2)' : 'none', border: i === 0 ? '1px solid var(--line2)' : '1px dashed var(--line)' }}>
+                      <div className="doc-left">
+                        <div className="doc-icon">
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 2h5l3 3v7a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" stroke={i === 0 ? "var(--ink)" : "var(--muted)"} strokeWidth="1.2"/>
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="doc-name" style={{ color: i === 0 ? 'var(--ink)' : 'var(--muted)' }}>v{contract.documents.length - i}.0</div>
+                          <div className="doc-meta">{doc.date}</div>
+                        </div>
+                      </div>
+                      <button className="doc-action">↓</button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -420,12 +443,14 @@ export default function ContractDetailPage({ contractId, onNavigate }) {
           </div>
           <div className="dab-right">
             <button className="btn-ghost-lg" onClick={() => onNavigate('contracts')}>Save & close</button>
-            <button className="btn-primary-lg" onClick={() => setShowApproveModal(true)} style={{padding: '12px 28px'}}>
-              <span>Approve & advance</span>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
+            {(currentUserRole === 'Admin' || currentUserRole === 'Manager') && (
+              <button className="btn-primary-lg" onClick={() => setShowApproveModal(true)} style={{padding: '12px 28px'}}>
+                <span>Approve & advance</span>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       </div>
