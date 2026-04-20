@@ -6,10 +6,13 @@ import ContractsPage from './components/ContractsPage';
 import ContractDetailPage from './components/ContractDetailPage';
 import NewContractPage from './components/NewContractPage';
 import LoginPage from './components/LoginPage';
+import AdminUsersPage from './components/AdminUsersPage';
 
 export default function App() {
   const [activePage, setActivePage] = useState('home');
   const [contractId, setContractId] = useState(null);
+  const [userRole, setUserRole] = useState('Admin'); // User roles: 'Admin', 'Manager', 'User'
+  const [currentUser, setCurrentUser] = useState(null);
 
   const handleNavigate = (page, data) => {
     if (page === 'contract-detail') {
@@ -31,30 +34,86 @@ export default function App() {
 
   return (
     <>
-      <Navbar activePage={navPage} onNavigate={handleNavigate} />
+      <Navbar 
+        activePage={navPage} 
+        onNavigate={handleNavigate} 
+        userRole={userRole} 
+        setUserRole={setUserRole} 
+        currentUser={currentUser}
+        setCurrentUser={setCurrentUser}
+      />
 
       <div className={`page ${activePage === 'home' ? 'active' : ''}`}>
         {activePage === 'home' && <HomePage onNavigate={handleNavigate} />}
       </div>
 
       <div className={`page ${activePage === 'dashboard' ? 'active' : ''}`}>
-        {activePage === 'dashboard' && <DashboardPage onNavigate={handleNavigate} />}
+        {activePage === 'dashboard' && (
+          !currentUser ? (
+            <div style={{ padding: '80px', textAlign: 'center', color: 'var(--muted)', height: '100vh', background: 'var(--cream)' }}>
+              <h2 style={{ color: 'var(--ink)' }}>Login Required</h2>
+              <p>Please log in to view this page.</p>
+              <button className="btn-ink" style={{ marginTop: '24px' }} onClick={() => handleNavigate('login')}>Log in</button>
+            </div>
+          ) : currentUser.role === 'User' ? (
+            <div style={{ padding: '80px', textAlign: 'center', color: 'var(--muted)', height: '100vh', background: 'var(--cream)' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
+              <h2 style={{ color: 'var(--ink)' }}>Access Denied</h2>
+              <p>You do not have permission to view the executive dashboard.</p>
+              <button className="btn-secondary" style={{ marginTop: '24px' }} onClick={() => handleNavigate('contracts')}>
+                Back to Contracts
+              </button>
+            </div>
+          ) : (
+            <DashboardPage onNavigate={handleNavigate} currentUser={currentUser} />
+          )
+        )}
       </div>
 
       <div className={`page ${activePage === 'contracts' ? 'active' : ''}`}>
-        {activePage === 'contracts' && <ContractsPage onNavigate={handleNavigate} />}
+        {activePage === 'contracts' && (
+          !currentUser ? (
+             <div style={{ padding: '80px', textAlign: 'center', color: 'var(--muted)', height: '100vh', background: 'var(--cream)' }}>
+              <h2 style={{ color: 'var(--ink)' }}>Login Required</h2>
+              <button className="btn-ink" style={{ marginTop: '24px' }} onClick={() => handleNavigate('login')}>Log in</button>
+            </div>
+          ) : (
+            <ContractsPage onNavigate={handleNavigate} userRole={currentUser.role} />
+          )
+        )}
       </div>
 
       <div className={`page ${activePage === 'contract-detail' ? 'active' : ''}`}>
-        {activePage === 'contract-detail' && <ContractDetailPage contractId={contractId} onNavigate={handleNavigate} />}
+        {activePage === 'contract-detail' && (
+          !currentUser ? null : <ContractDetailPage contractId={contractId} onNavigate={handleNavigate} userRole={currentUser.role} />
+        )}
       </div>
 
       <div className={`page ${activePage === 'new-contract' ? 'active' : ''}`}>
-        {activePage === 'new-contract' && <NewContractPage onNavigate={handleNavigate} />}
+        {activePage === 'new-contract' && (
+          !currentUser ? null : <NewContractPage onNavigate={handleNavigate} />
+        )}
+      </div>
+
+      <div className={`page ${activePage === 'admin-users' ? 'active' : ''}`}>
+        {activePage === 'admin-users' && (
+          !currentUser ? null : currentUser.role === 'Admin' ? (
+            <AdminUsersPage onNavigate={handleNavigate} />
+          ) : (
+            <div style={{ padding: '80px', textAlign: 'center', color: 'var(--muted)', height: '100vh', background: 'var(--cream)' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
+              <h2 style={{ color: 'var(--ink)' }}>Access Denied</h2>
+              <p>Only System Administrators can access user management.</p>
+              <button className="btn-secondary" style={{ marginTop: '24px' }} onClick={() => handleNavigate('contracts')}>
+                Back to Contracts
+              </button>
+            </div>
+          )
+        )}
       </div>
 
       <div className={`page ${activePage === 'login' ? 'active' : ''}`}>
-        {activePage === 'login' && <LoginPage onNavigate={handleNavigate} />}
+        {activePage === 'login' && <LoginPage onNavigate={handleNavigate} setCurrentUser={setCurrentUser} userRole={userRole} setUserRole={setUserRole} />}
       </div>
     </>
   );

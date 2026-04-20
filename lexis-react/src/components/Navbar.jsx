@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Navbar({ activePage, onNavigate }) {
+export default function Navbar({ activePage, onNavigate, userRole, setUserRole, currentUser, setCurrentUser }) {
   return (
     <nav className="nav-top">
       <a className="nav-brand" href="#" onClick={(e) => { e.preventDefault(); onNavigate('home'); }}>
@@ -21,30 +21,60 @@ export default function Navbar({ activePage, onNavigate }) {
             Platform
           </a>
         </li>
-        <li>
-          <a
-            onClick={() => onNavigate('contracts')}
-            className={activePage === 'contracts' ? 'active-link' : ''}
-          >
-            Contracts
-          </a>
-        </li>
-        <li>
-          <a
-            onClick={() => onNavigate('dashboard')}
-            className={activePage === 'dashboard' ? 'active-link' : ''}
-          >
-            Dashboard
-          </a>
-        </li>
+        {currentUser && (
+          <>
+            <li>
+              <a
+                onClick={() => onNavigate('contracts')}
+                className={activePage === 'contracts' ? 'active-link' : ''}
+              >
+                Contracts
+              </a>
+            </li>
+            {currentUser.role !== 'User' && (
+              <li>
+                <a
+                  onClick={() => onNavigate('dashboard')}
+                  className={activePage === 'dashboard' ? 'active-link' : ''}
+                >
+                  Dashboard
+                </a>
+              </li>
+            )}
+            {currentUser.role === 'Admin' && (
+              <li>
+                <a
+                  onClick={() => onNavigate('admin-users')}
+                  className={activePage === 'admin-users' ? 'active-link' : ''}
+                >
+                  Users
+                </a>
+              </li>
+            )}
+          </>
+        )}
       </ul>
 
       <div className="nav-right">
-        <div className="nav-alert">
-          <div className="alert-blink"></div>
-          3 critical
-        </div>
-        <button className="btn-ink" onClick={() => onNavigate('login')}>Login</button>
+        {currentUser && (
+          <div className="nav-alert">
+            <div className="alert-blink"></div>
+            3 critical
+          </div>
+        )}
+
+        {currentUser ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: '8px' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--ink)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '500' }}>
+              {currentUser.name.charAt(0)}
+            </div>
+            <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => { setCurrentUser(null); onNavigate('home'); }}>
+              Log out
+            </button>
+          </div>
+        ) : (
+          <button className="btn-ink" onClick={() => onNavigate('login')}>Login</button>
+        )}
       </div>
     </nav>
   );

@@ -1,11 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { TemplatesView, CounterpartiesView, ObligationsView, AnalyticsView, AuditLogView } from './DashboardViews';
 
-export default function DashboardPage({ onNavigate }) {
+export default function DashboardPage({ onNavigate, currentUser }) {
   const [activeSbItem, setActiveSbItem] = useState('Overview');
+  const [contracts, setContracts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [toastMsg, setToastMsg] = useState('');
+
+  const showToast = (msg) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3000);
+  };
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/contracts')
+      .then(res => res.json())
+      .then(data => {
+        setContracts(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, []);
 
   const handleSbClick = (name) => {
+    // Override routing for external routes
+    if (name === 'All contracts' || name === 'Pending approval' || name === 'Expiring soon') {
+      return onNavigate('contracts');
+    }
+    if (name === 'Team') {
+      if (currentUser?.role === 'Admin') {
+        return onNavigate('admin-users');
+      } else {
+        return showToast('Admin access required for Team management');
+      }
+    }
+    // Otherwise just update the internal dashboard tab layout
     setActiveSbItem(name);
   };
+
+  const activeCount = contracts.length;
+  const pendingCount = contracts.filter(c => c.status && c.status.toLowerCase().includes('approval')).length;
+  const expiringCount = contracts.filter(c => c.status && c.status.toLowerCase().includes('expiring')).length;
+  const totalValue = contracts.reduce((acc, c) => {
+    const vStr = c.value ? c.value.replace(/[^0-9.-]+/g,"") : "0";
+    return acc + Number(vStr);
+  }, 0);
+  
+  const formattedValue = totalValue >= 1000000 
+    ? `$${(totalValue/1000000).toFixed(1)}M` 
+    : `$${(totalValue/1000).toFixed(0)}K`;
 
   return (
     <div id="page-dashboard">
@@ -33,7 +79,7 @@ export default function DashboardPage({ onNavigate }) {
                 </svg>
                 All contracts
               </div>
-              <span className="sb-badge b-ink">48</span>
+              <span className="sb-badge b-ink">{activeCount}</span>
             </div>
             <div className={`sb-item ${activeSbItem === 'Pending approval' ? 'active' : ''}`} onClick={() => handleSbClick('Pending approval')}>
               <div className="sb-item-left">
@@ -43,7 +89,7 @@ export default function DashboardPage({ onNavigate }) {
                 </svg>
                 Pending approval
               </div>
-              <span className="sb-badge b-red">7</span>
+              <span className="sb-badge b-red">{pendingCount}</span>
             </div>
             <div className={`sb-item ${activeSbItem === 'Expiring soon' ? 'active' : ''}`} onClick={() => handleSbClick('Expiring soon')}>
               <div className="sb-item-left">
@@ -53,7 +99,7 @@ export default function DashboardPage({ onNavigate }) {
                 </svg>
                 Expiring soon
               </div>
-              <span className="sb-badge b-red">5</span>
+              <span className="sb-badge b-red">{expiringCount}</span>
             </div>
           </div>
 
@@ -123,10 +169,14 @@ export default function DashboardPage({ onNavigate }) {
 
           <div className="sb-bottom">
             <div className="sb-user">
-              <div className="sb-avatar">AK</div>
+              <div className="sb-avatar" style={{ textTransform: 'uppercase' }}>
+                {currentUser?.name?.charAt(0) || 'A'}
+              </div>
               <div>
-                <div className="sb-user-name">Arjun Kumar</div>
-                <div className="sb-user-role">General Counsel <span style={{ opacity: 0.5 }}>· Admin</span></div>
+                <div className="sb-user-name">{currentUser?.name || 'Arjun Kumar'}</div>
+                <div className="sb-user-role" style={{ textTransform: 'capitalize' }}>
+                  {currentUser?.role || 'Admin'} Level
+                </div>
               </div>
             </div>
           </div>
@@ -134,158 +184,143 @@ export default function DashboardPage({ onNavigate }) {
 
         {/* MAIN */}
         <div className="dash-main">
-
-          <div className="command-bar">
-            <div>
-              <div className="command-greeting">Good evening, Arjun.</div>
-              <div className="command-sub">Mon 20 Apr 2026 &nbsp;·&nbsp; 3 contracts need a decision today
-                &nbsp;·&nbsp; 2 approvals are overdue</div>
-            </div>
-            <button className="btn-ink" onClick={() => onNavigate('new-contract')} style={{ fontSize: '12px', padding: '10px 22px' }}>+ New
-              contract</button>
-          </div>
-
-          {/* KPIs */}
-          <div className="kpi-strip">
-            <div className="kpi-cell k-black">
-              <div className="kpi-label">Active contracts</div>
-              <div className="kpi-val">19</div>
-              <div className="kpi-delta up">↑ 3 this month</div>
-            </div>
-            <div className="kpi-cell k-red">
-              <div className="kpi-label">Expiring within 30d</div>
-              <div className="kpi-val">5</div>
-              <div className="kpi-delta down">2 critical this week</div>
-            </div>
-            <div className="kpi-cell k-amber">
-              <div className="kpi-label">Pending approval</div>
-              <div className="kpi-val">7</div>
-              <div className="kpi-delta warn">2 overdue 4d+</div>
-            </div>
-            <div className="kpi-cell k-green">
-              <div className="kpi-label">Total contract value</div>
-              <div className="kpi-val">$2.4M</div>
-              <div className="kpi-delta up">↑ 18% QoQ</div>
-            </div>
-          </div>
-
-          {/* ATTENTION SPLIT */}
-          <div className="attention-section">
-
-            <div className="attention-main">
-              <div className="panel-head">
-                <div className="ph-title">Needs your decision — 5 items</div>
-                <button className="ph-action" onClick={() => onNavigate('contracts')}>View all contracts →</button>
-              </div>
-
-              <div className="contract-entry" onClick={() => onNavigate('contract-detail', 'techcorp')} style={{cursor: 'pointer'}}>
-                <div className="ce-urgency ce-urg-red"></div>
-                <div className="ce-body">
-                  <div className="ce-name">Service Agreement – TechCorp</div>
-                  <div className="ce-sub">Legal · Priya Sharma · Ref #2024-0847</div>
+          {activeSbItem === 'Overview' && (
+            <>
+              <div className="command-bar">
+                <div>
+                  <div className="command-greeting">Good evening, {currentUser?.name?.split(' ')[0] || 'Arjun'}.</div>
+                  <div className="command-sub">{new Date().toDateString()} &nbsp;·&nbsp; {pendingCount} contracts need a decision today</div>
                 </div>
-                <div className="ce-stage"><span className="stage-pill sp-red">Expiring</span></div>
-                <div className="ce-date">Apr 22</div>
-                <div className="ce-cta"><button className="cta-pill">Review now</button></div>
+                <button className="btn-ink" onClick={() => onNavigate('new-contract')} style={{ fontSize: '12px', padding: '10px 22px' }}>+ New contract</button>
               </div>
-              <div className="contract-entry" onClick={() => onNavigate('contract-detail', 'novacorp')} style={{cursor: 'pointer'}}>
-                <div className="ce-urgency ce-urg-red"></div>
-                <div className="ce-body">
-                  <div className="ce-name">Vendor MSA – NovaCorp</div>
-                  <div className="ce-sub">Procurement · Raj Kumar · Overdue 4 days</div>
-                </div>
-                <div className="ce-stage"><span className="stage-pill sp-red">Overdue</span></div>
-                <div className="ce-date">Apr 16</div>
-                <div className="ce-cta"><button className="cta-pill">Approve</button></div>
-              </div>
-              <div className="contract-entry" onClick={() => onNavigate('contract-detail', 'meridian')} style={{cursor: 'pointer'}}>
-                <div className="ce-urgency ce-urg-amber"></div>
-                <div className="ce-body">
-                  <div className="ce-name">SaaS License – Meridian Systems</div>
-                  <div className="ce-sub">Procurement · Assigned: Priya · Stalled 9 days</div>
-                </div>
-                <div className="ce-stage"><span className="stage-pill sp-amber">Stalled</span></div>
-                <div className="ce-date">Apr 11</div>
-                <div className="ce-cta"><button className="cta-pill">Follow up</button></div>
-              </div>
-              <div className="contract-entry" style={{cursor: 'pointer'}}>
-                <div className="ce-urgency ce-urg-amber"></div>
-                <div className="ce-body">
-                  <div className="ce-name">NDA – Orbit Labs</div>
-                  <div className="ce-sub">Business Dev · Renewal not started · Exp. May 2</div>
-                </div>
-                <div className="ce-stage"><span className="stage-pill sp-amber">Renew soon</span></div>
-                <div className="ce-date">May 2</div>
-                <div className="ce-cta"><button className="cta-pill">Start renewal</button></div>
-              </div>
-              <div className="contract-entry">
-                <div className="ce-urgency ce-urg-blue"></div>
-                <div className="ce-body">
-                  <div className="ce-name">Partnership Agreement – Stealth Co.</div>
-                  <div className="ce-sub">Legal · 2 unresolved comments</div>
-                </div>
-                <div className="ce-stage"><span className="stage-pill sp-blue">In review</span></div>
-                <div className="ce-date">May 30</div>
-                <div className="ce-cta"><button className="cta-pill">View comments</button></div>
-              </div>
-            </div>
 
-            <div className="attention-side">
-              <div className="panel-head">
-                <div className="ph-title">Activity</div>
+              {/* KPIs */}
+              <div className="kpi-strip">
+                <div className="kpi-cell k-black">
+                  <div className="kpi-label">Active contracts</div>
+                  <div className="kpi-val">{activeCount}</div>
+                  <div className="kpi-delta up">↑ Tracked in system</div>
+                </div>
+                <div className="kpi-cell k-red">
+                  <div className="kpi-label">Expiring within 30d</div>
+                  <div className="kpi-val">{expiringCount}</div>
+                  <div className="kpi-delta down">Requires review</div>
+                </div>
+                <div className="kpi-cell k-amber">
+                  <div className="kpi-label">Pending approval</div>
+                  <div className="kpi-val">{pendingCount}</div>
+                  <div className="kpi-delta warn">Bottlenecks found</div>
+                </div>
+                <div className="kpi-cell k-green">
+                  <div className="kpi-label">Total contract value</div>
+                  <div className="kpi-val">{formattedValue}</div>
+                  <div className="kpi-delta up">Estimated gross volume</div>
+                </div>
               </div>
-              <div className="activity-feed">
-                <div className="act-entry">
-                  <div className="act-ava ava-green">AK</div>
-                  <div>
-                    <div className="act-text">You approved <b>NDA – Global Partners</b></div>
-                    <div className="act-time">Today · 4:12 PM</div>
+
+              {/* ATTENTION SPLIT */}
+              <div className="attention-section">
+                <div className="attention-main">
+                  <div className="panel-head">
+                    <div className="ph-title">Needs your decision — {contracts.slice(0, 5).length} items</div>
+                    <button className="ph-action" onClick={() => onNavigate('contracts')}>View all contracts →</button>
                   </div>
+
+                  {loading ? (
+                    <div style={{ padding: '24px', textAlign: 'center', color: 'var(--muted)' }}>Fetching live data from MongoDB...</div>
+                  ) : contracts.slice(0, 5).map(c => {
+                    const isOverdue = c.status === 'OVERDUE' || c.status === 'EXPIRING';
+                    const isAmber = c.status === 'STALLED' || c.status === 'REVIEW' || c.status === 'APPROVAL';
+                    return (
+                      <div key={c._id} className="contract-entry" onClick={() => onNavigate('contract-detail', c._id)} style={{cursor: 'pointer'}}>
+                        <div className={`ce-urgency ${isOverdue ? 'ce-urg-red' : isAmber ? 'ce-urg-amber' : 'ce-urg-blue'}`}></div>
+                        <div className="ce-body">
+                          <div className="ce-name">{c.title}</div>
+                          <div className="ce-sub">{c.party} · {c.type}</div>
+                        </div>
+                        <div className="ce-stage"><span className={`stage-pill ${isOverdue ? 'sp-red' : isAmber ? 'sp-amber' : 'sp-blue'}`}>{c.status || 'ACTIVE'}</span></div>
+                        <div className="ce-date">{c.timeline?.expiryDate ? new Date(c.timeline.expiryDate).toLocaleDateString(undefined, {month: 'short', day: 'numeric'}) : 'N/A'}</div>
+                        <div className="ce-cta"><button className="cta-pill">Review now</button></div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="act-entry">
-                  <div className="act-ava ava-blue">PS</div>
-                  <div>
-                    <div className="act-text"><b>Meridian SaaS License</b> moved to Legal Review</div>
-                    <div className="act-time">Today · 2:45 PM</div>
+
+                <div className="attention-side">
+                  <div className="panel-head">
+                    <div className="ph-title">Activity</div>
                   </div>
-                </div>
-                <div className="act-entry">
-                  <div className="act-ava ava-blue">PS</div>
-                  <div>
-                    <div className="act-text">Priya commented on <b>Stealth Co Partnership</b></div>
-                    <div className="act-time">Today · 11:30 AM</div>
+                  <div className="activity-feed">
+                    <div className="act-entry">
+                      <div className="act-ava ava-green">AK</div>
+                      <div>
+                        <div className="act-text">You approved <b>NDA – Global Partners</b></div>
+                        <div className="act-time">Today · 4:12 PM</div>
+                      </div>
+                    </div>
+                    <div className="act-entry">
+                      <div className="act-ava ava-blue">PS</div>
+                      <div>
+                        <div className="act-text"><b>Meridian SaaS License</b> moved to Legal Review</div>
+                        <div className="act-time">Today · 2:45 PM</div>
+                      </div>
+                    </div>
+                    <div className="act-entry">
+                      <div className="act-ava ava-blue">PS</div>
+                      <div>
+                        <div className="act-text">Priya commented on <b>Stealth Co Partnership</b></div>
+                        <div className="act-time">Today · 11:30 AM</div>
+                      </div>
+                    </div>
+                    <div className="act-entry">
+                      <div className="act-ava ava-amber">RK</div>
+                      <div>
+                        <div className="act-text"><b>NovaCorp Vendor MSA</b> sent for approval</div>
+                        <div className="act-time">Yesterday · 5:00 PM</div>
+                      </div>
+                    </div>
+                    <div className="act-entry">
+                      <div className="act-ava ava-green">AK</div>
+                      <div>
+                        <div className="act-text">You created <b>Service Agreement – TechCorp</b></div>
+                        <div className="act-time">Apr 15 · 10:14 AM</div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="act-entry">
-                  <div className="act-ava ava-amber">RK</div>
-                  <div>
-                    <div className="act-text"><b>NovaCorp Vendor MSA</b> sent for approval</div>
-                    <div className="act-time">Yesterday · 5:00 PM</div>
+
+                  <div className="panel-head" style={{ borderTop: '1px solid var(--line)' }}>
+                    <div className="ph-title">Quick actions</div>
                   </div>
-                </div>
-                <div className="act-entry">
-                  <div className="act-ava ava-green">AK</div>
-                  <div>
-                    <div className="act-text">You created <b>Service Agreement – TechCorp</b></div>
-                    <div className="act-time">Apr 15 · 10:14 AM</div>
+                  <div className="quick-panel">
+                    <div className="qa-row" onClick={() => onNavigate('new-contract')} style={{cursor: 'pointer'}}>
+                      <div className="qa-row-left">+ New contract</div>
+                      <div className="qa-row-right">From template →</div>
+                    </div>
                   </div>
                 </div>
               </div>
+            </>
+          )}
 
-              <div className="panel-head" style={{ borderTop: '1px solid var(--line)' }}>
-                <div className="ph-title">Quick actions</div>
-              </div>
-              <div className="quick-panel">
-                <div className="qa-row" onClick={() => onNavigate('new-contract')} style={{cursor: 'pointer'}}>
-                  <div className="qa-row-left">+ New contract</div>
-                  <div className="qa-row-right">From template →</div>
-                </div>
-              </div>
-            </div>
+          {activeSbItem === 'Templates' && <TemplatesView />}
+          {activeSbItem === 'Counterparties' && <CounterpartiesView />}
+          {activeSbItem === 'Obligations' && <ObligationsView />}
+          {activeSbItem === 'Analytics' && <AnalyticsView />}
+          {activeSbItem === 'Audit log' && <AuditLogView />}
 
-          </div>
         </div>
       </div>
+
+      {toastMsg && (
+        <div className="toast">
+          <div className="toast-icon">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M4 8l3 3 5-5" stroke="var(--cream)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          {toastMsg}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,12 +1,43 @@
 import React, { useState } from 'react';
 
-export default function LoginPage({ onNavigate }) {
+export default function LoginPage({ onNavigate, setCurrentUser, userRole, setUserRole }) {
+  const [isSignup, setIsSignup] = useState(false);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    onNavigate('dashboard');
+    try {
+      if (isSignup) {
+        const res = await fetch('http://localhost:5000/api/users/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name || 'New User', email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) return alert(data.message);
+        
+        setUserRole(data.role);
+        setCurrentUser(data);
+        onNavigate('dashboard');
+      } else {
+        const res = await fetch('http://localhost:5000/api/users/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) return alert(data.message);
+        
+        setUserRole(data.role);
+        setCurrentUser(data);
+        onNavigate('dashboard');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error during authentication');
+    }
   };
 
   return (
@@ -49,6 +80,19 @@ export default function LoginPage({ onNavigate }) {
           </div>
 
           <form className="login-form" onSubmit={handleLogin}>
+            {isSignup && (
+              <div className="form-group">
+                <label className="form-label">Full Name</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="Jane Doe" 
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  required
+                />
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">Work Email</label>
               <input 
@@ -72,16 +116,18 @@ export default function LoginPage({ onNavigate }) {
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-              <label style={{ fontSize: '12px', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <input type="checkbox" style={{ accentColor: 'var(--ink)' }} />
-                Remember me
-              </label>
-              <a href="#" style={{ fontSize: '12px', color: 'var(--ink)', fontWeight: '500', textDecoration: 'none' }}>Forgot password?</a>
-            </div>
+            {!isSignup && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                <label style={{ fontSize: '12px', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <input type="checkbox" style={{ accentColor: 'var(--ink)' }} />
+                  Remember me
+                </label>
+                <a href="#" style={{ fontSize: '12px', color: 'var(--ink)', fontWeight: '500', textDecoration: 'none' }}>Forgot password?</a>
+              </div>
+            )}
 
             <button type="submit" className="btn-primary-lg" style={{ width: '100%', justifyContent: 'center', marginTop: '16px' }}>
-              <span>Sign in to Lexis</span>
+              <span>{isSignup ? "Create Lexis Account" : "Sign in to Lexis"}</span>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -89,7 +135,11 @@ export default function LoginPage({ onNavigate }) {
           </form>
 
           <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '11px', color: 'var(--faint)' }}>
-            Not using Lexis yet? <a href="#" style={{ color: 'var(--ink)', fontWeight: '500' }}>Request a demo</a>
+            {isSignup ? (
+              <>Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); setIsSignup(false); }} style={{ color: 'var(--ink)', fontWeight: '500', cursor: 'pointer' }}>Sign In here</a></>
+            ) : (
+              <>Not using Lexis yet? <a href="#" onClick={(e) => { e.preventDefault(); setIsSignup(true); }} style={{ color: 'var(--ink)', fontWeight: '500', cursor: 'pointer' }}>Create an Account</a></>
+            )}
           </div>
         </div>
       </div>
