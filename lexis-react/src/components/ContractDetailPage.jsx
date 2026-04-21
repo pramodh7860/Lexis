@@ -6,6 +6,8 @@ export default function ContractDetailPage({ contractId, onNavigate, userRole })
   const [toastMsg, setToastMsg] = useState('');
   const [contract, setContract] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({});
 
   useEffect(() => {
     if (!contractId) return;
@@ -14,6 +16,7 @@ export default function ContractDetailPage({ contractId, onNavigate, userRole })
       .then(res => res.json())
       .then(data => {
         setContract(data);
+        setEditForm(data);
         setLoading(false);
       })
       .catch(err => {
@@ -27,12 +30,247 @@ export default function ContractDetailPage({ contractId, onNavigate, userRole })
     setTimeout(() => setToastMsg(''), 3000);
   };
 
-  const handleApprove = () => {
-    setShowApproveModal(false);
-    showToast('Contract approved successfully');
-    
-    // In a fully functional app, we would make a PUT request to update the backend:
-    // fetch(`http://localhost:5000/api/contracts/${contractId}`, { method: 'PUT', ... })
+  const handleApprove = async () => {
+    try {
+      // Logic to advance stage
+      const nextStageIndex = (contract.stageIndex || 0) + 1;
+      const stages = [...(contract.stages || [])];
+      if (stages[contract.stageIndex]) {
+        stages[contract.stageIndex].done = true;
+        stages[contract.stageIndex].current = false;
+      }
+      if (stages[nextStageIndex]) {
+        stages[nextStageIndex].current = true;
+      }
+
+      const nextStageName = stages[nextStageIndex]?.name || 'Executed';
+      const isFinal = nextStageIndex >= stages.length - 1;
+
+      // Update approval chain if needed
+      const approvalChain = [...(contract.approvalChain || [])];
+      const myStepIdx = approvalChain.findIndex(s => s.status === 'Pending' || s.status === 'In Progress');
+      if (myStepIdx !== -1) {
+        approvalChain[myStepIdx].status = 'Approved';
+        approvalChain[myStepIdx].color = 'green';
+        if (approvalChain[myStepIdx + 1]) {
+          approvalChain[myStepIdx + 1].status = 'Pending';
+          approvalChain[myStepIdx + 1].color = 'amber';
+        }
+      }
+
+      const res = await fetch(`http://localhost:5000/api/contracts/${contractId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          stage: nextStageName, 
+          stageIndex: nextStageIndex,
+          stampText: isFinal ? 'Approved' : nextStageName,
+          urgency: isFinal ? 'green' : 'blue',
+          stages,
+          approvalChain,
+          $push: { 
+            timeline: {
+              initials: userRole === 'Admin' ? 'AK' : 'PS',
+              color: 'green',
+              text: `<b>${userRole}</b> approved the contract and advanced it to <b>${nextStageName}</b>`,
+              time: 'Just now'
+            }
+          }
+        })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setContract(updated);
+        setShowApproveModal(false);
+        showToast('Contract approved successfully');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error approving contract');
+    }
+  };
+
+  const handleReject = async () => {
+    if (!window.confirm('Are you sure you want to reject this contract?')) return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/contracts/${contractId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          stage: 'Rejected', 
+          urgency: 'red',
+          stampText: 'Rejected',
+          $push: { 
+            timeline: {
+              initials: userRole === 'Admin' ? 'AK' : 'PS',
+              color: 'red',
+              text: `<b>${userRole}</b> rejected the contract`,
+              time: 'Just now'
+            }
+          }
+        })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setContract(updated);
+        showToast('Contract rejected');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error rejecting contract');
+    }
+  };
+
+  const handleSendBack = async () => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/contracts/${contractId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          stage: 'Review', 
+          stageIndex: 1,
+          urgency: 'amber',
+          stampText: 'Revision\\nNeeded',
+          $push: { 
+            timeline: {
+              initials: userRole === 'Admin' ? 'AK' : 'PS',
+              color: 'amber',
+              text: `<b>${userRole}</b> sent the contract back for review`,
+              time: 'Just now'
+            }
+          }
+        })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setContract(updated);
+        showToast('Sent back for review');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error sending back contract');
+    }
+  };
+
+  const handlePostComment = async () => {
+    if (!commentText.trim()) return;
+    try {
+      const newEntry = {
+        initials: userRole === 'Admin' ? 'AK' : 'PS',
+        color: 'blue',
+        text: `<b>${userRole}</b> added a comment`,
+        time: 'Just now',
+        comment: commentText
+      };
+      const res = await fetch(`http://localhost:5000/api/contracts/${contractId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          $push: { timeline: newEntry }
+        })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setContract(updated);
+        setCommentText('');
+        showToast('Comment added');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error posting comment');
+    }
+  };
+
+  const handleResolveRisk = async (riskIndex) => {
+    try {
+      const updatedRisks = contract.risks.filter((_, idx) => idx !== riskIndex);
+      const res = await fetch(`http://localhost:5000/api/contracts/${contractId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          risks: updatedRisks,
+          urgency: updatedRisks.length === 0 ? 'green' : 'amber',
+          $push: { 
+            timeline: {
+              initials: userRole === 'Admin' ? 'AK' : 'PS',
+              color: 'blue',
+              text: `<b>${userRole}</b> resolved a risk alert`,
+              time: 'Just now'
+            }
+          }
+        })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setContract(updated);
+        showToast('Risk resolved');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error resolving risk');
+    }
+  };
+
+  const handleSaveChanges = async () => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/contracts/${contractId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm)
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setContract(updated);
+        setIsEditing(false);
+        showToast('Contract updated successfully');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error saving changes');
+    }
+  };
+
+  const handleVersionUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const uploadRes = await fetch('http://localhost:5000/api/contracts/upload', {
+        method: 'POST',
+        body: formData
+      });
+      if (uploadRes.ok) {
+        const fileData = await uploadRes.json();
+        
+        // Update contract with new document
+        const res = await fetch(`http://localhost:5000/api/contracts/${contractId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            $push: { 
+              documents: { $each: [fileData], $position: 0 },
+              timeline: {
+                initials: userRole === 'Admin' ? 'AK' : 'PS',
+                color: 'blue',
+                text: `<b>${userRole}</b> uploaded a new version: <b>${fileData.name}</b>`,
+                time: 'Just now'
+              }
+            }
+          })
+        });
+        if (res.ok) {
+          const updated = await res.json();
+          setContract(updated);
+          showToast('New version uploaded');
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Upload failed');
+    }
   };
 
   if (loading) {
@@ -70,9 +308,9 @@ export default function ContractDetailPage({ contractId, onNavigate, userRole })
         {/* HEADER */}
         <div className="detail-header">
           <div className="dh-left">
-            <div className="dh-ref">REF {contract.ref} · {(contract.type || '').toUpperCase()}</div>
-            <div className="dh-title">{contract.name}</div>
-            <div className="dh-party">{contract.party}</div>
+            <div className="dh-ref">REF {contract.ref} · {isEditing ? <input value={editForm.type} onChange={e => setEditForm({...editForm, type: e.target.value})} className="edit-input-inline" /> : (contract.type || '').toUpperCase()}</div>
+            <div className="dh-title">{isEditing ? <input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="edit-input-inline title-edit" /> : contract.name}</div>
+            <div className="dh-party">{isEditing ? <input value={editForm.party} onChange={e => setEditForm({...editForm, party: e.target.value})} className="edit-input-inline" /> : contract.party}</div>
             <div className="dh-tags">
               <span className={`stage-pill sp-${contract.urgency}`}>{contract.stage}</span>
               <span className="eyebrow-tag">{contract.department}</span>
@@ -84,14 +322,23 @@ export default function ContractDetailPage({ contractId, onNavigate, userRole })
               <div className="dh-stamp-text">{contract.stampText}</div>
             </div>
             <div className="dh-actions">
-              <button className="btn-secondary" onClick={() => onNavigate('contracts')}>Edit</button>
-              {(userRole === 'Admin' || userRole === 'Manager') && (
-                <button className="btn-primary-lg" onClick={() => setShowApproveModal(true)} style={{padding: '10px 24px', fontSize: '12px'}}>
-                  <span>Approve</span>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M3 7l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
+              {isEditing ? (
+                <>
+                  <button className="btn-secondary" onClick={() => { setIsEditing(false); setEditForm(contract); }}>Cancel</button>
+                  <button className="btn-primary-lg" onClick={handleSaveChanges} style={{padding: '10px 24px', fontSize: '12px'}}>Save Changes</button>
+                </>
+              ) : (
+                <>
+                  {userRole === 'User' && <button className="btn-secondary" onClick={() => setIsEditing(true)}>Edit</button>}
+                  {(userRole === 'Admin' || userRole === 'Manager') && (
+                    <button className="btn-primary-lg" onClick={() => setShowApproveModal(true)} style={{padding: '10px 24px', fontSize: '12px'}}>
+                      <span>Approve to {contract.stages && contract.stages[contract.stageIndex + 1] ? contract.stages[contract.stageIndex + 1].name : 'Final'}</span>
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M3 7l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -139,15 +386,15 @@ export default function ContractDetailPage({ contractId, onNavigate, userRole })
                 <div className="ki-grid">
                   <div className="ki-cell">
                     <div className="ki-label">Contract Value</div>
-                    <div className="ki-value">{contract.value}</div>
+                    <div className="ki-value">{isEditing ? <input value={editForm.value} onChange={e => setEditForm({...editForm, value: e.target.value})} className="edit-input-inline" /> : contract.value}</div>
                   </div>
                   <div className="ki-cell">
                     <div className="ki-label">Expiry Date</div>
-                    <div className={`ki-value ${contract.urgency === 'red' ? 'v-red' : ''}`}>{contract.expires}</div>
+                    <div className={`ki-value ${contract.urgency === 'red' ? 'v-red' : ''}`}>{isEditing ? <input type="date" value={editForm.expires} onChange={e => setEditForm({...editForm, expires: e.target.value})} className="edit-input-inline" /> : contract.expires}</div>
                   </div>
                   <div className="ki-cell">
                     <div className="ki-label">Time Remaining</div>
-                    <div className={`ki-value ${contract.urgency === 'red' ? 'v-red' : ''}`}>{contract.expiresIn}</div>
+                    <div className={`ki-value ${contract.urgency === 'red' ? 'v-red' : ''}`}>{isEditing ? <input value={editForm.expiresIn} onChange={e => setEditForm({...editForm, expiresIn: e.target.value})} className="edit-input-inline" /> : contract.expiresIn}</div>
                   </div>
                   <div className="ki-cell">
                     <div className="ki-label">Created</div>
@@ -155,11 +402,11 @@ export default function ContractDetailPage({ contractId, onNavigate, userRole })
                   </div>
                   <div className="ki-cell">
                     <div className="ki-label">Owner</div>
-                    <div className="ki-value">{contract.owner}</div>
+                    <div className="ki-value">{isEditing ? <input value={editForm.owner} onChange={e => setEditForm({...editForm, owner: e.target.value})} className="edit-input-inline" /> : contract.owner}</div>
                   </div>
                   <div className="ki-cell">
                     <div className="ki-label">Department</div>
-                    <div className="ki-value">{contract.department}</div>
+                    <div className="ki-value">{isEditing ? <input value={editForm.department} onChange={e => setEditForm({...editForm, department: e.target.value})} className="edit-input-inline" /> : contract.department}</div>
                   </div>
                 </div>
               </div>
@@ -179,7 +426,7 @@ export default function ContractDetailPage({ contractId, onNavigate, userRole })
                       <div className="risk-title">{risk.title}</div>
                       <div className="risk-desc">{risk.desc}</div>
                     </div>
-                    <button className="risk-action" onClick={() => showToast(`Action taken: ${risk.action}`)}>{risk.action}</button>
+                    <button className="risk-action" onClick={() => handleResolveRisk(i)}>{risk.action}</button>
                   </div>
                 ))}
               </div>
@@ -208,7 +455,15 @@ export default function ContractDetailPage({ contractId, onNavigate, userRole })
             <div className="ds-section">
               <div className="ds-head">
                 <div className="ds-title">Document viewer</div>
-                <button className="ph-action">+ Upload new version</button>
+                <input 
+                  type="file" 
+                  id="version-upload" 
+                  style={{ display: 'none' }} 
+                  onChange={handleVersionUpload} 
+                />
+                <button className="ph-action" onClick={() => document.getElementById('version-upload').click()}>
+                  + Upload new version
+                </button>
               </div>
               <div className="ds-content" style={{ display: 'flex', gap: '20px' }}>
                 <div style={{ flex: 2 }}>
@@ -222,8 +477,13 @@ export default function ContractDetailPage({ contractId, onNavigate, userRole })
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
                       <path d="M14 2v6h6" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
                     </svg>
-                    <div style={{ fontSize: '14px', color: 'var(--ink)' }}>{documents[0]?.name || 'Document Prefix'}</div>
-                    <div style={{ marginTop: '8px', fontSize: '12px' }}>Pages 1-28 • PDF Preview</div>
+                    <div style={{ fontSize: '14px', color: 'var(--ink)' }}>{documents[0]?.name || 'No Document Attached'}</div>
+                    <div style={{ marginTop: '8px', fontSize: '12px' }}>{documents[0]?.size || '0 KB'} • PDF Preview</div>
+                    {documents[0]?.url && (
+                      <a href={documents[0].url} target="_blank" rel="noreferrer" className="btn-secondary" style={{ marginTop: '20px', textDecoration: 'none', fontSize: '12px', padding: '6px 12px' }}>
+                        Download Current Version
+                      </a>
+                    )}
                   </div>
                 </div>
 
@@ -240,11 +500,11 @@ export default function ContractDetailPage({ contractId, onNavigate, userRole })
                           </svg>
                         </div>
                         <div>
-                          <div className="doc-name" style={{ color: i === 0 ? 'var(--ink)' : 'var(--muted)' }}>v{documents.length - i}.0</div>
-                          <div className="doc-meta">{doc.date}</div>
+                          <div className="doc-name" style={{ color: i === 0 ? 'var(--ink)' : 'var(--muted)' }}>{doc.name}</div>
+                          <div className="doc-meta">{doc.date} · {doc.size}</div>
                         </div>
                       </div>
-                      <button className="doc-action">↓</button>
+                      {doc.url && <a href={doc.url} target="_blank" rel="noreferrer" className="doc-action" style={{ textDecoration: 'none' }}>↓</a>}
                     </div>
                   ))}
                 </div>
@@ -308,7 +568,7 @@ export default function ContractDetailPage({ contractId, onNavigate, userRole })
                   onChange={(e) => setCommentText(e.target.value)}
                   rows={2}
                 />
-                <button className="comment-submit" onClick={() => { if (commentText.trim()) { showToast('Comment added'); setCommentText(''); } }}>
+                <button className="comment-submit" onClick={handlePostComment}>
                   Post
                 </button>
               </div>
@@ -319,14 +579,14 @@ export default function ContractDetailPage({ contractId, onNavigate, userRole })
         {/* ACTION BAR */}
         <div className="detail-action-bar">
           <div className="dab-left">
-            <button className="btn-danger">Reject contract</button>
-            <button className="btn-secondary">Send back for review</button>
+            <button className="btn-danger" onClick={handleReject}>Reject contract</button>
+            <button className="btn-secondary" onClick={handleSendBack}>Send back for review</button>
           </div>
           <div className="dab-right">
-            <button className="btn-ghost-lg" onClick={() => onNavigate('contracts')}>Save & close</button>
+            <button className="btn-ghost-lg" onClick={() => onNavigate('contracts')}>Close</button>
             {(userRole === 'Admin' || userRole === 'Manager') && (
               <button className="btn-primary-lg" onClick={() => setShowApproveModal(true)} style={{padding: '12px 28px'}}>
-                <span>Approve & advance</span>
+                <span>Approve to {contract.stages && contract.stages[contract.stageIndex + 1] ? contract.stages[contract.stageIndex + 1].name : 'Final'}</span>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>

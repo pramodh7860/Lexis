@@ -20,6 +20,7 @@ export default function LoginPage({ onNavigate, setCurrentUser, userRole, setUse
         
         setUserRole(data.role);
         setCurrentUser(data);
+        localStorage.setItem('lexis_user', JSON.stringify(data));
         onNavigate('dashboard');
       } else {
         const res = await fetch('http://localhost:5000/api/users/login', {
@@ -32,6 +33,7 @@ export default function LoginPage({ onNavigate, setCurrentUser, userRole, setUse
         
         setUserRole(data.role);
         setCurrentUser(data);
+        localStorage.setItem('lexis_user', JSON.stringify(data));
         onNavigate('dashboard');
       }
     } catch (err) {

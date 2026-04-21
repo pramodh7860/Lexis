@@ -7,12 +7,19 @@ import ContractDetailPage from './components/ContractDetailPage';
 import NewContractPage from './components/NewContractPage';
 import LoginPage from './components/LoginPage';
 import AdminUsersPage from './components/AdminUsersPage';
+import TeamsPage from './components/TeamsPage';
 
 export default function App() {
   const [activePage, setActivePage] = useState('home');
   const [contractId, setContractId] = useState(null);
-  const [userRole, setUserRole] = useState('Admin'); // User roles: 'Admin', 'Manager', 'User'
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem('lexis_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [userRole, setUserRole] = useState(() => {
+    const saved = localStorage.getItem('lexis_user');
+    return saved ? JSON.parse(saved).role : 'Admin';
+  });
 
   const handleNavigate = (page, data) => {
     if (page === 'contract-detail') {
@@ -78,7 +85,7 @@ export default function App() {
               <button className="btn-ink" style={{ marginTop: '24px' }} onClick={() => handleNavigate('login')}>Log in</button>
             </div>
           ) : (
-            <ContractsPage onNavigate={handleNavigate} userRole={currentUser.role} />
+            <ContractsPage onNavigate={handleNavigate} currentUser={currentUser} />
           )
         )}
       </div>
@@ -91,7 +98,7 @@ export default function App() {
 
       <div className={`page ${activePage === 'new-contract' ? 'active' : ''}`}>
         {activePage === 'new-contract' && (
-          !currentUser ? null : <NewContractPage onNavigate={handleNavigate} />
+          !currentUser ? null : <NewContractPage onNavigate={handleNavigate} currentUser={currentUser} />
         )}
       </div>
 
@@ -113,6 +120,10 @@ export default function App() {
       </div>
 
       <div className={`page ${activePage === 'login' ? 'active' : ''}`}>
+        {activePage === 'teams' && (
+          !currentUser ? null : <TeamsPage currentUser={currentUser} />
+        )}
+
         {activePage === 'login' && <LoginPage onNavigate={handleNavigate} setCurrentUser={setCurrentUser} userRole={userRole} setUserRole={setUserRole} />}
       </div>
     </>

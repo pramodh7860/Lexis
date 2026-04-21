@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 
-export default function ContractsPage({ onNavigate, userRole }) {
+export default function ContractsPage({ onNavigate, currentUser }) {
   const [activeFilter, setActiveFilter] = useState('All');
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/contracts')
+    fetch(`http://localhost:5000/api/contracts?userId=${currentUser._id}&userRole=${currentUser.role}`)
       .then(res => res.json())
       .then(data => {
         setContracts(data);

@@ -17,7 +17,8 @@ const RiskSchema = new mongoose.Schema({
 const DocumentSchema = new mongoose.Schema({
   name: String,
   size: String,
-  date: String
+  date: String,
+  url: String
 });
 
 const ApprovalStepSchema = new mongoose.Schema({
@@ -59,6 +60,7 @@ const ContractSchema = new mongoose.Schema({
   expiresIn: String,
   owner: String,
   department: String,
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   clauses: [ClauseSchema],
   risks: [RiskSchema],
   documents: [DocumentSchema],

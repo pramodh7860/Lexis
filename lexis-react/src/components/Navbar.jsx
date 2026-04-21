@@ -41,6 +41,16 @@ export default function Navbar({ activePage, onNavigate, userRole, setUserRole, 
                 </a>
               </li>
             )}
+            {(currentUser.role === 'Admin' || currentUser.role === 'Manager') && (
+              <li>
+                <a
+                  onClick={() => onNavigate('teams')}
+                  className={activePage === 'teams' ? 'active-link' : ''}
+                >
+                  Teams
+                </a>
+              </li>
+            )}
             {currentUser.role === 'Admin' && (
               <li>
                 <a
@@ -68,7 +78,7 @@ export default function Navbar({ activePage, onNavigate, userRole, setUserRole, 
             <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--ink)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '500' }}>
               {currentUser.name.charAt(0)}
             </div>
-            <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => { setCurrentUser(null); onNavigate('home'); }}>
+            <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => { localStorage.removeItem('lexis_user'); setCurrentUser(null); onNavigate('home'); }}>
               Log out
             </button>
           </div>

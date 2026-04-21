@@ -4,6 +4,8 @@ export default function AdminUsersPage({ onNavigate }) {
   const [users, setUsers] = useState([]);
   const [toastMsg, setToastMsg] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ name: '', email: '', password: '', role: 'User' });
 
   useEffect(() => {
     fetchUsers();
@@ -55,6 +57,30 @@ export default function AdminUsersPage({ onNavigate }) {
       }
     } catch (err) {
       console.error(err);
+      showToast('Error deleting user');
+    }
+  };
+  const handleInvite = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('http://localhost:5000/api/users/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(inviteForm)
+      });
+      if (res.ok) {
+        const newUser = await res.json();
+        setUsers([newUser, ...users]);
+        setShowInviteModal(false);
+        setInviteForm({ name: '', email: '', password: '', role: 'User' });
+        showToast('User invited successfully');
+      } else {
+        const err = await res.json();
+        showToast(err.message || 'Error inviting user');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Connection error');
     }
   };
 
@@ -71,7 +97,7 @@ export default function AdminUsersPage({ onNavigate }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <button className="btn-primary-lg" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+            <button className="btn-primary-lg" onClick={() => setShowInviteModal(true)}>
               <span>+ Invite User</span>
             </button>
           </div>
@@ -164,6 +190,75 @@ export default function AdminUsersPage({ onNavigate }) {
         </div>
 
       </div>
+
+      {showInviteModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(26, 21, 16, 0.4)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white', padding: '32px', borderRadius: '12px',
+            width: '100%', maxWidth: '400px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
+          }}>
+            <h2 style={{ fontSize: '18px', marginBottom: '20px', color: 'var(--ink)' }}>Invite New User</h2>
+            <form onSubmit={handleInvite}>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label className="form-label">Full Name</label>
+                <input 
+                  required
+                  className="form-input" 
+                  value={inviteForm.name} 
+                  onChange={e => setInviteForm({...inviteForm, name: e.target.value})} 
+                  placeholder="e.g. John Doe" 
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label className="form-label">Email Address</label>
+                <input 
+                  required
+                  type="email"
+                  className="form-input" 
+                  value={inviteForm.email} 
+                  onChange={e => setInviteForm({...inviteForm, email: e.target.value})} 
+                  placeholder="john@example.com" 
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label className="form-label">Temporary Password</label>
+                <input 
+                  required
+                  type="password"
+                  className="form-input" 
+                  value={inviteForm.password} 
+                  onChange={e => setInviteForm({...inviteForm, password: e.target.value})} 
+                  placeholder="********" 
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: '24px' }}>
+                <label className="form-label">Initial Role</label>
+                <select 
+                  className="form-input" 
+                  value={inviteForm.role} 
+                  onChange={e => setInviteForm({...inviteForm, role: e.target.value})}
+                >
+                  <option value="User">User</option>
+                  <option value="Manager">Manager</option>
+                  <option value="Admin">Admin</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowInviteModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary-lg" style={{ flex: 2, padding: '10px' }}>
+                  Send Invitation
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {toastMsg && (
         <div className="toast">

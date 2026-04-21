@@ -13,7 +13,7 @@ export default function DashboardPage({ onNavigate, currentUser }) {
   };
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/contracts')
+    fetch(`http://localhost:5000/api/contracts?userId=${currentUser._id}&userRole=${currentUser.role}`)
       .then(res => res.json())
       .then(data => {
         setContracts(data);
@@ -42,8 +42,8 @@ export default function DashboardPage({ onNavigate, currentUser }) {
   };
 
   const activeCount = contracts.length;
-  const pendingCount = contracts.filter(c => c.status && c.status.toLowerCase().includes('approval')).length;
-  const expiringCount = contracts.filter(c => c.status && c.status.toLowerCase().includes('expiring')).length;
+  const pendingCount = contracts.filter(c => c.stage === 'Approval').length;
+  const expiringCount = contracts.filter(c => c.urgency === 'red').length;
   const totalValue = contracts.reduce((acc, c) => {
     const vStr = c.value ? c.value.replace(/[^0-9.-]+/g,"") : "0";
     return acc + Number(vStr);
@@ -229,17 +229,18 @@ export default function DashboardPage({ onNavigate, currentUser }) {
                   {loading ? (
                     <div style={{ padding: '24px', textAlign: 'center', color: 'var(--muted)' }}>Fetching live data from MongoDB...</div>
                   ) : contracts.slice(0, 5).map(c => {
-                    const isOverdue = c.status === 'OVERDUE' || c.status === 'EXPIRING';
-                    const isAmber = c.status === 'STALLED' || c.status === 'REVIEW' || c.status === 'APPROVAL';
+                    const stage = c.stage || 'Active';
+                    const isOverdue = stage === 'Overdue' || c.urgency === 'red';
+                    const isAmber = stage === 'Stalled' || stage === 'Review' || stage === 'Approval';
                     return (
                       <div key={c._id} className="contract-entry" onClick={() => onNavigate('contract-detail', c._id)} style={{cursor: 'pointer'}}>
                         <div className={`ce-urgency ${isOverdue ? 'ce-urg-red' : isAmber ? 'ce-urg-amber' : 'ce-urg-blue'}`}></div>
                         <div className="ce-body">
-                          <div className="ce-name">{c.title}</div>
+                          <div className="ce-name">{c.name}</div>
                           <div className="ce-sub">{c.party} · {c.type}</div>
                         </div>
-                        <div className="ce-stage"><span className={`stage-pill ${isOverdue ? 'sp-red' : isAmber ? 'sp-amber' : 'sp-blue'}`}>{c.status || 'ACTIVE'}</span></div>
-                        <div className="ce-date">{c.timeline?.expiryDate ? new Date(c.timeline.expiryDate).toLocaleDateString(undefined, {month: 'short', day: 'numeric'}) : 'N/A'}</div>
+                        <div className="ce-stage"><span className={`stage-pill ${isOverdue ? 'sp-red' : isAmber ? 'sp-amber' : 'sp-blue'}`}>{stage}</span></div>
+                        <div className="ce-date">{c.expires || 'N/A'}</div>
                         <div className="ce-cta"><button className="cta-pill">Review now</button></div>
                       </div>
                     );
